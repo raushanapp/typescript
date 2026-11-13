@@ -43,3 +43,18 @@ letter.unshift("x");
 letter.shift();
 letter.pop();
 letter.slice(0, 1);
+
+//  typescript is supersets of javascript
+//  In TypeScript, you can define arrays with specific types to ensure type safety.
+
+let userIds: number[] = [1, 2, 3];
+let securityPins: string[] = ["1234", "0111", "0123"];
+
+//  You can also define arrays using the Array<T> generic type
+let productIds: Array<number> = [101, 102, 103];
+
+let productNames: Array<string> = ["Laptop", "Phone", "Tablet"];
+
+//  You can also define arrays with mixed types using tuples
+let user: [number, string] = [1, "Alice"];
+let product: Array<number> = [12, 34, 56];

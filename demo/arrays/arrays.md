@@ -39,10 +39,16 @@ The source also declares an array containing values of different types:
 const mixed = [1, "a", true, {}, []];
 ```
 
-TypeScript allows this and infers a type that can include the different
-element types. For a collection intended to hold one kind of value, keeping
-the elements the same type is usually clearer and makes the array easier to
-use.
+This is valid: TypeScript infers an element type that can accommodate the
+values. An array does not have to contain only one type, but if the allowed
+types are intentional, make that clear with a union:
+
+```ts
+const identifiers: (number | string)[] = [101, "A-102"];
+```
+
+For a collection intended to hold only one kind of value, a single element
+type is usually clearer and gives more useful checks.
 
 ## Nested arrays
 
@@ -99,6 +105,55 @@ const firstLetter = letters.slice(0, 1); // ["a"]
 In the source, the result of `letter.slice(0, 1)` is not assigned to a
 variable, so it is calculated and then discarded.
 
+## Adding array types
+
+The source annotates arrays in two equivalent ways:
+
+```ts
+let userIds: number[] = [1, 2, 3];
+let securityPins: string[] = ["1234", "0111", "0123"];
+
+let productIds: Array<number> = [101, 102, 103];
+let productNames: Array<string> = ["Laptop", "Phone", "Tablet"];
+```
+
+`number[]` means “an array whose elements are numbers.” `Array<number>` means
+the same thing, using TypeScript's generic `Array` type. Use whichever form
+best matches the style of the project; `T[]` is common for simple types.
+
+An annotation lets TypeScript check later additions and assignments:
+
+```ts
+const scores: number[] = [10, 20];
+scores.push(30);      // OK
+// scores.push("40"); // Error: string is not assignable to number
+```
+
+The annotation does not convert values at runtime; it catches mismatches
+during type checking.
+
+## Tuples: arrays with position-specific types
+
+The source also uses a tuple:
+
+```ts
+let user: [number, string] = [1, "Alice"];
+```
+
+The tuple type describes the expected type at each position: index `0` is a
+number and index `1` is a string. This is different from `(number | string)[]`,
+where either type can appear at any position and the array can have any
+length. A regular tuple is still mutable; its type describes the intended
+structure but does not make the JavaScript array immutable at runtime.
+
+```ts
+const userId = user[0];   // number
+const userName = user[1]; // string
+```
+
+Use an ordinary array for a collection of similarly typed items; use a tuple
+when the positions have different meanings or types.
+
 ## Empty arrays
 
 The source also declares an empty array:
@@ -107,8 +162,9 @@ The source also declares an empty array:
 const emptyArray = [];
 ```
 
-When creating an empty array that will later hold values, providing an
-explicit element type can make its intended use clear:
+An empty array has no elements from which TypeScript can infer the intended
+element type. When it will later hold values, add an annotation to make its
+purpose clear and check future additions:
 
 ```ts
 const scores: number[] = [];
