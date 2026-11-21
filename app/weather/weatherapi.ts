@@ -1,3 +1,4 @@
+import axios from "axios";
 export const weatherCodes: Record<number, string> = {
   0: "Clear sky",
   1: "Mainly clear",
@@ -28,3 +29,103 @@ export const weatherCodes: Record<number, string> = {
   96: "Thunderstorm with slight hail",
   99: "Thunderstorm with heavy hail",
 };
+
+interface CurrentWeatherApiResponse {
+  temperature: string;
+  windspeed: number;
+  winddirection: number;
+  weathercode: number;
+  is_day: number;
+  time: string;
+  interval: number;
+}
+
+export interface Temperature {
+  value: number;
+  unit: string;
+}
+
+const formatTemperature = (temp: Temperature): string =>
+  `${temp.value}${temp.unit}`;
+
+export interface Wind {
+  speed: number;
+  direction: number;
+  unit: string;
+}
+
+const formatWind = (wind: Wind): string =>
+  `${wind.speed}${wind.direction} ${wind.unit}°`;
+
+export class CurrentWeather {
+  temperature: Temperature;
+  wind: Wind;
+  weatherCode: number;
+  daytime: boolean;
+  time: string;
+  interval: number;
+  constructor(apiResponse: CurrentWeatherApiResponse) {
+    this.temperature = {
+      value: parseFloat(apiResponse.temperature),
+      unit: "°C",
+    };
+    this.wind = {
+      speed: apiResponse.windspeed,
+      direction: apiResponse.winddirection,
+      unit: "kmh",
+    };
+    this.weatherCode = apiResponse.weathercode;
+    this.daytime = apiResponse.is_day === 1;
+    this.time = apiResponse.time;
+    this.interval = apiResponse.interval;
+  }
+
+  condition(): string {
+    return weatherCodes[this.weatherCode];
+  }
+
+  format(): string {
+    const descriptionLen = 16;
+    const temp = "Temperature".padStart(descriptionLen, " ");
+    const windSpeed = "Wind Speed".padStart(descriptionLen, " ");
+    const condition = "Condition".padStart(descriptionLen, " ");
+    const formatted: string[] = [];
+    formatted.push(`${temp}: ${formatTemperature(this.temperature)}`);
+    formatted.push(`${windSpeed}: ${formatWind(this.wind)}`);
+    formatted.push(`${condition}: ${this.condition()}`);
+    return formatted.join("\n");
+  }
+}
+
+export async function fetchWeatherData(
+  apiUrl: string,
+  lat: number,
+  lon: number,
+): Promise<CurrentWeatherApiResponse> {
+  const options = {
+    method: "GET",
+    url: apiUrl,
+    params: {
+      latitude: lat,
+      longitude: lon,
+      hourly: "temperature_2m",
+      temperature_unit: "celsius",
+      windspeed_unit: "kmh",
+      current_weather: true,
+    },
+  };
+  try {
+    const response = await axios.request(options);
+    if (response.status === 200) {
+      if (response.data?.current_weather !== undefined) {
+        const res = response.data.current_weather as CurrentWeatherApiResponse;
+        return new CurrentWeather(res);
+      } else {
+        throw new Error("Current weather data is not available");
+      }
+    }
+    throw new Error("Failed to fetch weather data");
+  } catch (error) {
+    throw new Error(`Error fetching weather data: ${error}`);
+  }
+}

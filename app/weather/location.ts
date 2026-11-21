@@ -1,4 +1,6 @@
 import axios from "axios";
+import dotenv from "dotenv";
+dotenv.config();
 export interface LocationInfo {
   lat: number;
   lon: number;
@@ -10,11 +12,19 @@ export async function fetchLocationData(
   locationName: string,
 ): Promise<LocationInfo> {
   //  const GEOCODE_API_URL = "https://geocode.maps.co/search?q={locationName}";
+  const apiKey = process.env.GEOCODE_API_KEY;
+  if (apiKey === undefined || apiKey === "") {
+    throw new Error("GEOCODE_API_KEY is not set");
+  }
+
   const options = {
     method: "GET",
     url: apiUrl,
     params: {
       q: locationName,
+    },
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
     },
   };
   const response = await axios.request<LocationInfo[]>(options);
