@@ -1,5 +1,6 @@
 import type { LocationInfo } from "./location";
 import { fetchLocationData } from "./location";
+import { fetchWeatherData } from "./weatherapi";
 const GEOCODE_API_URL = "https://geocode.maps.co/search";
 const WEATHER_API_URL = "https://api.open-meteo.com/v1/forecast";
 
@@ -20,11 +21,22 @@ async function main(): Promise<number> {
     console.error(error);
     return 1;
   }
+  console.log(`Fetching weather data for ${locationInfo.display_name}....\n`);
   // fetch weather data
+  try {
+    const weather = await fetchWeatherData(
+      WEATHER_API_URL,
+      locationInfo.lat,
+      locationInfo.lon,
+    );
+    console.log(weather.format());
+  } catch (err) {
+    console.error(err);
+    return 1;
+  }
   // display weather data
 
-  console.log(locationInfo);
-  return 0;
+  return await Promise.resolve(0);
 }
 
 main()
