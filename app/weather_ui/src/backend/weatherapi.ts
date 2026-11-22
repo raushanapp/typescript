@@ -93,6 +93,41 @@ export class CurrentWeather {
   }
 }
 
+// export async function fetchWeatherData(
+//   axios: AxiosStatic,
+//   apiUrl: string,
+//   lat: number,
+//   lon: number,
+// ): Promise<CurrentWeather> {
+//   const options = {
+//     method: "GET",
+//     url: apiUrl,
+//     params: {
+//       latitude: lat,
+//       longitude: lon,
+//       hourly: "temperature_2m",
+//       temperature_unit: "celsius",
+//       current_weather: true,
+//       forecast_days: 1,
+//     },
+//   };
+//   const response = await axios?.request(options);
+//   if (response?.status === 200) {
+//     try {
+//       const parsedResponse = currentWeatherApiResponseSchema?.parse(
+//         response?.data,
+//       );
+//       return new CurrentWeather(parsedResponse);
+//     } catch (error) {
+//       const message = error instanceof Error ? error.message : String(error);
+//       console.error("Failed to parse API response:", message);
+//       throw new Error(`Error fetching weather data: ${message}`);
+//     }
+//   } else {
+//     throw new Error(`Unexpected response status: ${response.status}`);
+//   }
+// }
+
 export async function fetchWeatherData(
   axios: AxiosStatic,
   apiUrl: string,
@@ -111,19 +146,22 @@ export async function fetchWeatherData(
       forecast_days: 1,
     },
   };
+
   const response = await axios.request(options);
-  if (response.status === 200) {
-    try {
-      const parsedResponse = currentWeatherApiResponseSchema.parse(
-        response?.data,
-      );
-      return new CurrentWeather(parsedResponse);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error("Failed to parse API response:", message);
-      throw new Error(`Error fetching weather data: ${message}`);
-    }
-  } else {
+
+  if (response.status !== 200) {
     throw new Error(`Unexpected response status: ${response.status}`);
+  }
+
+  try {
+    const parsedResponse = currentWeatherApiResponseSchema.parse(response.data);
+
+    return new CurrentWeather(parsedResponse);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Failed to process weather data: ${error.message}`);
+    }
+
+    throw new Error("Failed to process weather data");
   }
 }

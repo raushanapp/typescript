@@ -34,14 +34,21 @@ export async function fetchLocationData(
     },
   };
   const response = await axios.request(options);
-  if (response.status === 200) {
-    try {
-      return LocationInfoSchema.parse(response.data[0]);
-    } catch (error) {
-      console.error(error);
-      throw new Error(`Failed to parse location data: ${error}`);
-    }
-  } else {
+
+  if (response.status !== 200) {
     throw new Error("Failed to fetch location data");
+  }
+
+  const location = response.data?.[0];
+
+  if (!location) {
+    throw new Error(`No location found for "${locationName}"`);
+  }
+
+  try {
+    return LocationInfoSchema.parse(location);
+  } catch (err) {
+    console.error("Location data validation failed:", err);
+    throw new Error(`Failed to parse location data: ${err}`);
   }
 }
