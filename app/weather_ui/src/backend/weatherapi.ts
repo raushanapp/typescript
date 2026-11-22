@@ -1,4 +1,5 @@
-import axios from "axios";
+import { z } from "zod";
+import type { AxiosStatic } from "axios";
 export const weatherCodes: Record<number, string> = {
   0: "Clear sky",
   1: "Mainly clear",
@@ -30,80 +31,70 @@ export const weatherCodes: Record<number, string> = {
   99: "Thunderstorm with heavy hail",
 };
 
-interface CurrentWeatherApiResponse {
-  temperature: string;
-  windspeed: number;
-  winddirection: number;
-  weathercode: number;
-  is_day: number;
-  time: string;
-  interval: number;
-}
+export const currentWeatherApiResponseSchema = z.object({
+  current_weather: z.object({
+    time: z.string(),
+    interval: z.number(),
+    temperature: z.number(),
+    windspeed: z.number(),
+    winddirection: z.number(),
+    is_day: z.number(),
+    weathercode: z.number(),
+  }),
+  hourly_units: z.object({
+    time: z.string(),
+    temperature_2m: z.string(),
+  }),
+  hourly: z.object({
+    temperature_2m: z.array(z.number()),
+  }),
+});
 
+export type CurrentWeatherApiResponse = z.infer<
+  typeof currentWeatherApiResponseSchema
+>;
 export interface Temperature {
   value: number;
   unit: string;
 }
-
-const formatTemperature = (temp: Temperature): string =>
-  `${temp.value}${temp.unit}`;
-
-export interface Wind {
-  speed: number;
-  direction: number;
-  unit: string;
-}
-
-const formatWind = (wind: Wind): string =>
-  `${wind.speed}${wind.direction} ${wind.unit}°`;
-
 export class CurrentWeather {
   temperature: Temperature;
 
-  wind: Wind;
-
   weatherCode: number;
 
-  daytime: boolean;
+  is_day: boolean;
 
   time: string;
 
-  interval: number;
+  hourlyTemp: number[];
 
   constructor(apiResponse: CurrentWeatherApiResponse) {
     this.temperature = {
-      value: parseFloat(apiResponse.temperature),
-      unit: "°C",
+      value: apiResponse.current_weather.temperature,
+      unit: apiResponse.hourly_units.temperature_2m,
     };
-    this.wind = {
-      speed: apiResponse.windspeed,
-      direction: apiResponse.winddirection,
-      unit: "kmh",
-    };
-    this.weatherCode = apiResponse.weathercode;
-    this.daytime = apiResponse.is_day === 1;
-    this.time = apiResponse.time;
-    this.interval = apiResponse.interval;
+
+    this.weatherCode = apiResponse.current_weather.weathercode;
+
+    this.is_day = apiResponse.current_weather.is_day === 1;
+    this.time = apiResponse.current_weather.time;
+    this.hourlyTemp = apiResponse.hourly.temperature_2m;
   }
 
   condition(): string {
     return weatherCodes[this.weatherCode];
   }
 
-  format(): string {
-    const descriptionLen = 16;
-    const temp = "Temperature".padStart(descriptionLen, " ");
-    const windSpeed = "Wind Speed".padStart(descriptionLen, " ");
-    const condition = "Condition".padStart(descriptionLen, " ");
-    const formatted: string[] = [];
-    formatted.push(`${temp}: ${formatTemperature(this.temperature)}`);
-    formatted.push(`${windSpeed}: ${formatWind(this.wind)}`);
-    formatted.push(`${condition}: ${this.condition()}`);
-    return formatted.join("\n");
+  lowTemp(): number {
+    return this.hourlyTemp.reduce((a, b) => Math.min(a, b));
+  }
+  highTemp(): number {
+    return this.hourlyTemp.reduce((a, b) => Math.max(a, b));
   }
 }
 
 export async function fetchWeatherData(
+  axios: AxiosStatic,
   apiUrl: string,
   lat: number,
   lon: number,
@@ -116,24 +107,23 @@ export async function fetchWeatherData(
       longitude: lon,
       hourly: "temperature_2m",
       temperature_unit: "celsius",
-      windspeed_unit: "kmh",
       current_weather: true,
+      forecast_days: 1,
     },
   };
-  try {
-    const response = await axios.request(options);
-    if (response.status === 200) {
-      if (response.data?.current_weather !== undefined) {
-        const res = response?.data
-          ?.current_weather as CurrentWeatherApiResponse;
-        return new CurrentWeather(res);
-      } else {
-        throw new Error("Received invalid API response");
-      }
+  const response = await axios.request(options);
+  if (response.status === 200) {
+    try {
+      const parsedResponse = currentWeatherApiResponseSchema.parse(
+        response?.data,
+      );
+      return new CurrentWeather(parsedResponse);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Failed to parse API response:", message);
+      throw new Error(`Error fetching weather data: ${message}`);
     }
-    throw new Error("Failed to fetch weather data");
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Error fetching weather data: ${message}`);
+  } else {
+    throw new Error(`Unexpected response status: ${response.status}`);
   }
 }
