@@ -24,7 +24,7 @@
   "ignorePatterns": ["*.test.ts", "*.js"],
   "rules": {
     "@typescript-eslint/method-signature-style": "off",
-    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/no-floating-promises": "off",
     "@typescript-eslint/no-non-null-assertion": "off",
     "@typescript-eslint/no-unsafe-call": "off",
